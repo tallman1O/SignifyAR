@@ -1,0 +1,142 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+#interface {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+#status-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+#status-container div {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#connection-status,
+#camera-status {
+  background-color: #f0f0f0;
+}
+
+#connection-status.connected,
+#camera-status.active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+#connection-status.disconnected,
+#camera-status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+#recognition-container,
+#response-container {
+  margin-bottom: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+}
+
+h3 {
+  margin-top: 0;
+  color: #343a40;
+}
+
+.text-display {
+  min-height: 40px;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  margin-top: 5px;
+}
+
+#controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+button {
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #0069d9;
+}
+
+label {
+  font-weight: bold;
+  color: #495057;
+}
+
+/* Speech bubble styling */
+#speech-bubble {
+  position: fixed;
+  background-color: white;
+  padding: 15px;
+  border-radius: 15px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  max-width: 300px;
+  text-align: center;
+}
+
+#speech-bubble:after {
+  content: "";
+  position: absolute;
+  bottom: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 10px 10px 0;
+  border-style: solid;
+  border-color: white transparent transparent;
+}
+
+/* For the 3D mode toggle */
+body.three-mode #interface {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  width: 300px;
+  z-index: 2000;
+  opacity: 0.9;
+  transition: all 0.3s ease;
+}
+
+body.three-mode #recognition-container,
+body.three-mode #response-container {
+  display: none;
+}
+
+body.three-mode #interface:hover {
+  opacity: 1;
+}
+
+/* Remove margins when in 3D mode */
+body.three-mode {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}

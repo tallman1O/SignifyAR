@@ -1,0 +1,17 @@
+flowchart TB
+    A[User Performs ASL Gesture] --> B[Webcam Captures Video]
+    B --> C{Hand Tracking}
+    C -->|MediaPipe| D[TensorFlow Model Inference]
+    D -->|Predicted Text| E[Kafka Producer]
+    E -->|Topic: asl_predictions| F[Kafka Broker]
+    F -->|Consumer| G[FastAPI Backend]
+    G --> H{Check Redis Cache}
+    H -->|Cached Response| I[Retrieve from Redis]
+    H -->|No Cache| J[Call Gemini API]
+    J --> K[Store Response in Redis]
+    K --> L[Kafka Producer]
+    I --> L
+    L -->|Topic: ar_responses| M[Kafka Broker]
+    M -->|Consumer| N[React Frontend]
+    N --> O[AR Display via Three.js/WebXR]
+    O --> P[User Sees AR Response]
