@@ -16,10 +16,16 @@ document.addEventListener("DOMContentLoaded", function () {
   console.log("Attempting to connect to Socket.IO server...");
 
   // Three.js variables
-  let camera, scene, renderer, avatar, mixer;
+  let camera, scene, renderer, mixer;
   let videoElement, videoTexture, videoMaterial;
   let clock = new THREE.Clock();
   let isThreeInitialized = false;
+  let currentLetterMesh = null;
+
+  // Letter position and animation variables
+  const letterPosition = new THREE.Vector3(0, 0, -2);
+  const letterRotation = new THREE.Vector3(0, 0, 0);
+  let letterAnimationFrame = null;
 
   // Connection events
   socket.on("connect", function () {
@@ -53,16 +59,14 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // AR response updates
-  socket.on("update_ar", function (chatbotResponse) {
-    console.log("AR response received:", chatbotResponse);
-    response.textContent = chatbotResponse;
+  socket.on("update_ar", function (letter) {
+    console.log("AR response received:", letter);
+    response.textContent = letter;
 
-    // Update speech bubble text
-    updateSpeechBubble(chatbotResponse);
-
-    // Make avatar "talk" if initialized
-    if (avatar) {
-      animateAvatar();
+    // If 3D view is active, show the letter
+    if (isThreeInitialized) {
+      // Create and display 3D letter
+      createLetterModel(letter);
     }
   });
 
@@ -161,39 +165,6 @@ document.addEventListener("DOMContentLoaded", function () {
         cameraStatus.className = "error";
       });
 
-    // Load 3D avatar model
-    const loader = new THREE.GLTFLoader();
-    loader.load(
-      "/models/avatar.glb",
-      // onLoad callback
-      function (gltf) {
-        avatar = gltf.scene;
-
-        // Scale and position the avatar
-        avatar.scale.set(1, 1, 1);
-        avatar.position.set(0, -1, 0);
-
-        scene.add(avatar);
-
-        // Check if model has animations
-        if (gltf.animations && gltf.animations.length) {
-          mixer = new THREE.AnimationMixer(avatar);
-          const idleAnimation = gltf.animations[0];
-          mixer.clipAction(idleAnimation).play();
-        }
-
-        console.log("Avatar model loaded successfully");
-      },
-      // onProgress callback
-      function (xhr) {
-        console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-      },
-      // onError callback
-      function (error) {
-        console.error("Error loading model:", error);
-      }
-    );
-
     // Handle window resize
     window.addEventListener("resize", onWindowResize);
 
@@ -201,6 +172,92 @@ document.addEventListener("DOMContentLoaded", function () {
     animate();
 
     isThreeInitialized = true;
+  }
+
+  // Create 3D letter model
+  function createLetterModel(letter) {
+    // Remove any existing letter model
+    if (currentLetterMesh) {
+      scene.remove(currentLetterMesh);
+      if (letterAnimationFrame) {
+        cancelAnimationFrame(letterAnimationFrame);
+      }
+    }
+
+    // Create text geometry
+    const fontLoader = new THREE.FontLoader();
+
+    // Use a predefined font since we don't want to load external fonts
+    fontLoader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', function(font) {
+      const textGeometry = new THREE.TextGeometry(letter, {
+        font: font,
+        size: 1,
+        height: 0.2,
+        curveSegments: 12,
+        bevelEnabled: true,
+        bevelThickness: 0.03,
+        bevelSize: 0.02,
+        bevelOffset: 0,
+        bevelSegments: 5
+      });
+
+      // Center the text geometry
+      textGeometry.computeBoundingBox();
+      const centerOffset = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+
+      // Create material
+      const textMaterial = new THREE.MeshPhongMaterial({
+        color: 0x00aaff,
+        specular: 0x111111,
+        shininess: 30
+      });
+
+      // Create mesh
+      currentLetterMesh = new THREE.Mesh(textGeometry, textMaterial);
+      currentLetterMesh.position.copy(letterPosition);
+      currentLetterMesh.position.x += centerOffset;
+      currentLetterMesh.rotation.copy(letterRotation);
+
+      scene.add(currentLetterMesh);
+
+      // Animate letter entry
+      animateLetter();
+    });
+  }
+
+  // Function to animate letter entry
+  function animateLetter() {
+    if (!currentLetterMesh) return;
+
+    const startScale = 0.1;
+    const endScale = 1.0;
+    const animationDuration = 1000; // ms
+    const startTime = Date.now();
+
+    currentLetterMesh.scale.set(startScale, startScale, startScale);
+
+    function updateLetterAnimation() {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / animationDuration, 1);
+
+      // Ease in out
+      const easeProgress = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+      const scale = startScale + (endScale - startScale) * easeProgress;
+      currentLetterMesh.scale.set(scale, scale, scale);
+
+      // Rotate slowly
+      currentLetterMesh.rotation.y = Math.sin(elapsed / 500) * 0.2;
+
+      if (progress < 1) {
+        letterAnimationFrame = requestAnimationFrame(updateLetterAnimation);
+      }
+    }
+
+    letterAnimationFrame = requestAnimationFrame(updateLetterAnimation);
   }
 
   // Resize handler
@@ -237,53 +294,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     renderer.render(scene, camera);
-  }
-
-  // Function to update speech bubble
-  function updateSpeechBubble(text) {
-    if (!isThreeInitialized || !avatar) return;
-
-    speechText.textContent = text;
-    speechBubble.style.display = "block";
-
-    // Position the speech bubble above the avatar in 3D space
-    const vector = new THREE.Vector3(0, 2, 0);
-    vector.project(camera);
-
-    const widthHalf = window.innerWidth / 2;
-    const heightHalf = window.innerHeight / 2;
-
-    speechBubble.style.left =
-      vector.x * widthHalf + widthHalf - speechBubble.offsetWidth / 2 + "px";
-    speechBubble.style.top =
-      -(vector.y * heightHalf) + heightHalf - speechBubble.offsetHeight + "px";
-  }
-
-  // Function to animate avatar for "talking"
-  function animateAvatar() {
-    if (!avatar) return;
-
-    // Simple head movement animation
-    const duration = 1000; // 1 second
-    const startTime = Date.now();
-
-    function headAnimation() {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-
-      if (progress < 1) {
-        // Simple head rotation
-        const rotationY = Math.sin(progress * Math.PI * 4) * 0.2;
-        avatar.rotation.y = rotationY;
-
-        requestAnimationFrame(headAnimation);
-      } else {
-        // Reset rotation when animation is complete
-        avatar.rotation.y = 0;
-      }
-    }
-
-    headAnimation();
   }
 
   // Function to toggle 3D view
